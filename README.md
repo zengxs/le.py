@@ -83,7 +83,7 @@ location ^~ /.well-known/acme-challenge {
 要自动 renew 证书只需要设置一下 crontab 即可：
 
 ~~~
-* * * * */4 /root/le.py -a /root/account.json new -t http-01 -k /etc/nginx/ssl/private/key.pem -o /etc/nginx/ssl/crt.pem --challenge-dir /usr/share/nginx/acme domain1.example.org && nginx -s reload
+* * * * */4 /root/le.py -a /root/account.json new -t http-01 -k /etc/nginx/ssl/private/key.pem -o /etc/nginx/ssl/crt.pem --challenge-dir /usr/share/nginx/acme domain1.example.org >> /var/log/le.py.log && nginx -s reload
 ~~~
 
-上面的 crontab 任务每 6 周 renew 一次证书并自动重启 Nginx 加载新证书。
+上面的 crontab 任务每 4 周 renew 一次证书并自动重启 Nginx 加载新证书。
