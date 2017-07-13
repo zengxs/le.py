@@ -1,0 +1,3 @@
+cryptography
+requests
+jwcrypto==0.4.0
