@@ -32,7 +32,7 @@ def get_key(path):
         return JWK.from_pem(key_file.read())
 
 
-def generate_header(jwk: JWK):
+def generate_header(jwk):
     # type: (JWK) -> dict
     header = dict(jwk=json_decode(jwk.export_public()))
     if 'kid' in header['jwk']:
@@ -66,7 +66,7 @@ def new_registration(server, key, email):
         lookup(server, 'new-reg'), json=sign_request(payload, nonce, key))
     if r.status_code != 201:  # Created
         raise IOError('ACME Request Failed: HTTP {} {}, {}'.format(
-            r.status_coe, r.reason, r.text))
+            r.status_code, r.reason, r.text))
     return r.json(), r.headers.get('Location')
 
 
@@ -117,6 +117,10 @@ def issue_certificate(server, domains, cert_key, key):
     from cryptography import x509
     from cryptography.x509 import NameOID
     assert domains
+    try:
+        domains = [unicode(domain) for domain in domains]
+    except NameError:
+        pass
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, domains[0])])
     san = x509.SubjectAlternativeName(
         [x509.DNSName(domain) for domain in domains])
@@ -162,7 +166,10 @@ def authorize(server, key, method, domains, challenge_dir=None):
                 hashlib.sha256(key_auth.encode()).digest())
             logging.info('  "_acme-challenge.{}." IN TXT  "{}"'.format(
                 domain, txt_record))
-            input("Press enter to continue: ")
+            try:
+                input("Press enter to continue: ")
+            except:  # for python2
+                pass
         else:  # 非 dns 验证
             with open(os.path.join(challenge_dir, token), 'w') as token_file:
                 token_file.write(key_auth)
@@ -179,23 +186,6 @@ def authorize(server, key, method, domains, challenge_dir=None):
                 raise IOError('Validate Failed: Status: {}'.format(status))
         else:
             raise IOError('Validate Failed.')
-
-
-def renew(server, key, method, domains, crt_key, crt_path=None, ch_dir=None):
-    # authorize
-    if method == 'dns-01':
-        authorize(server, key, method, domains)
-    elif ch_dir is not None:
-        authorize(server, key, method, domains, ch_dir)
-    else:
-        raise IOError('challenge directory unknown')
-    # issue certificate
-    certficate = issue_certificate(server, domains, crt_key, key)
-    if crt_path is not None:
-        with open(crt_path, 'wb') as crt_file:
-            crt_file.write(certficate)
-    else:
-        return certficate
 
 
 def load_account(path):
@@ -225,11 +215,18 @@ def _reg(args):
 
 def _new(args):
     account = load_account(args.account)
+    print(type(args.domain[0]))
     with open(args.key_file, 'rb') as key_file:
         cert_key = serialization.load_pem_private_key( \
             key_file.read(), None, default_backend())
-    authorize(args.server, account['jwk'], args.type, args.domain,
-              args.challenge_dir)
+    # authorize
+    if args.type.startswith('dns'):
+        authorize(args.server, account['jwk'], args.type, args.domain)
+    elif args.challenge_dir is not None:
+        authorize(args.server, account['jwk'], args.type, args.domain,
+                  args.challenge_dir)
+    else:
+        raise IOError('challenge directory unknown')
     crt = issue_certificate(args.server, args.domain, cert_key, account['jwk'])
     with open(args.output, 'wb') as crt_file:
         crt_file.write(crt)
