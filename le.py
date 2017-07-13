@@ -181,9 +181,10 @@ def authorize(server, key, method, domains, challenge_dir=None):
                 logging.info('Domain validate success: {}'.format(domain))
                 break  # validate success
             elif status == 'pending':
-                time.sleep(1)  # 一秒后再判断
+                logging.info('Retry to get validate status')
+                time.sleep(5)  # 5秒后再判断
             else:
-                raise IOError('Validate Failed: Status: {}'.format(status))
+                raise IOError('Validate Failed: Status: {}, {}'.format(status, challenge['uri']))
         else:
             raise IOError('Validate Failed.')
 
@@ -215,7 +216,6 @@ def _reg(args):
 
 def _new(args):
     account = load_account(args.account)
-    print(type(args.domain[0]))
     with open(args.key_file, 'rb') as key_file:
         cert_key = serialization.load_pem_private_key( \
             key_file.read(), None, default_backend())
